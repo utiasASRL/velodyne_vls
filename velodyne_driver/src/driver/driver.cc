@@ -21,6 +21,7 @@
 #include <ros/ros.h>
 #include <tf/transform_listener.h>
 #include <velodyne_msgs/VelodyneScan.h>
+#include <velodyne_driver/rawPosData.h>
 
 #include "driver.h"
 
