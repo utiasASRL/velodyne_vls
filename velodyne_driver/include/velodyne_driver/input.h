@@ -39,6 +39,7 @@
 
 #include <ros/ros.h>
 #include <velodyne_msgs/VelodynePacket.h>
+#include <velodyne_msgs/VelodynePosPacket.h>
 
 namespace velodyne_driver
 {
@@ -49,7 +50,7 @@ namespace velodyne_driver
   class Input
   {
   public:
-    Input(ros::NodeHandle private_nh, uint16_t port);
+    Input(ros::NodeHandle private_nh, uint16_t port, uint16_t pport);
     virtual ~Input() {}
 
     /** @brief Read one Velodyne packet.
@@ -61,12 +62,16 @@ namespace velodyne_driver
      *          > 0 if incomplete packet (is this possible?)
      */
     virtual int getPacket(velodyne_msgs::VelodynePacket *pkt,
+                          velodyne_msgs::VelodynePosPacketPtr &ppkt,
                           const double time_offset) = 0;
     virtual void setPacketRate( const double packet_rate ) = 0; // necessary for automatic adjustment of rpm
 
   protected:
     ros::NodeHandle private_nh_;
-    uint16_t port_;
+    // uint16_t port_;
+    uint16_t dport_; /**< port for reading data packet */
+    uint16_t pport_; /**< port for reading position packet */
+
     std::string devip_str_;
   };
 
@@ -75,17 +80,20 @@ namespace velodyne_driver
   {
   public:
     InputSocket(ros::NodeHandle private_nh,
-                uint16_t port = DATA_PORT_NUMBER);
+                uint16_t port = DATA_PORT_NUMBER,
+                uint16_t pport = POSITION_PORT_NUMBER);
     virtual ~InputSocket();
 
     virtual int getPacket(velodyne_msgs::VelodynePacket *pkt, 
+                          velodyne_msgs::VelodynePosPacketPtr &ppkt,
                           const double time_offset);
 
     void setDeviceIP( const std::string& ip );
     void setPacketRate( const double packet_rate ) ; // necessary for automatic adjustment of rpm
 
   private:
-    int sockfd_;
+    int sockfd_d_; /**< socket file descriptor for data packet */
+    int sockfd_p_; /**< socket file descriptor for position packet */
     in_addr devip_;
   };
 
@@ -100,6 +108,7 @@ namespace velodyne_driver
   public:
     InputPCAP(ros::NodeHandle private_nh,
               uint16_t port = DATA_PORT_NUMBER,
+              uint16_t pport = POSITION_PORT_NUMBER,
               double packet_rate = 0.0,
               std::string filename="",
               bool read_once=false,
@@ -108,6 +117,7 @@ namespace velodyne_driver
     virtual ~InputPCAP();
 
     virtual int getPacket(velodyne_msgs::VelodynePacket *pkt, 
+                          velodyne_msgs::VelodynePosPacketPtr &ppkt,
                           const double time_offset);
     void setDeviceIP( const std::string& ip );
     void setPacketRate( const double packet_rate ); // necessary for automatic adjustment of rpm
@@ -116,7 +126,8 @@ namespace velodyne_driver
     ros::Duration *pwait_time;
     std::string filename_;
     pcap_t *pcap_;
-    bpf_program pcap_packet_filter_;
+    bpf_program pcap_data_packet_filter_;
+    bpf_program pcap_position_packet_filter_;
     char errbuf_[PCAP_ERRBUF_SIZE];
     bool empty_;
     bool read_once_;

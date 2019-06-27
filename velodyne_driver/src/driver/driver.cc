@@ -293,7 +293,9 @@ VelodyneDriver::VelodyneDriver(ros::NodeHandle node,
   private_nh.param("pcap", dump_file, std::string(""));
 
   int udp_port;
+  int udp_pport;
   private_nh.param("port", udp_port, (int) DATA_PORT_NUMBER);
+  private_nh.param("pport", udp_pport, (int) POSITION_PORT_NUMBER);
 
   // Initialize dynamic reconfigure
   srv_ = boost::make_shared <dynamic_reconfigure::Server<velodyne_driver::
@@ -321,13 +323,13 @@ VelodyneDriver::VelodyneDriver(ros::NodeHandle node,
   if (dump_file != "")                  // have PCAP file?
     {
       // read data from packet capture file
-      input_.reset(new velodyne_driver::InputPCAP(private_nh, udp_port,
+      input_.reset(new velodyne_driver::InputPCAP(private_nh, udp_port, udp_pport,
                                                   packet_rate, dump_file));
     }
   else
     {
       // read data from live socket
-      input_.reset(new velodyne_driver::InputSocket(private_nh, udp_port));
+      input_.reset(new velodyne_driver::InputSocket(private_nh, udp_port, udp_pport));
     }
 
   // raw packet output topic
@@ -345,6 +347,7 @@ bool VelodyneDriver::poll(void)
 {
   // Allocate a new shared pointer for zero-copy sharing with other nodelets.
   velodyne_msgs::VelodyneScanPtr scan(new velodyne_msgs::VelodyneScan);
+  velodyne_msgs::VelodynePosPacketPtr positionPacket;
   scan->packets.resize(config_.npackets);
 
   // Since the velodyne delivers data at a very high rate, keep
@@ -354,7 +357,7 @@ bool VelodyneDriver::poll(void)
       while (true)
       {
           // keep reading until full packet received
-          int rc = input_->getPacket(&scan->packets[i], config_.time_offset);
+          int rc = input_->getPacket(&scan->packets[i], positionPacket, config_.time_offset);
           if (rc == 0) break;       // got a full packet?
           if (rc < 0) return false; // end of file reached?
       }
