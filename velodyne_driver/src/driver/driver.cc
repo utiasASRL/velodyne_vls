@@ -445,16 +445,17 @@ bool VelodyneDriver::poll(void)
   auto_npackets =  get_auto_npackets(curr_packet_sensor_model, curr_packet_rmode, auto_rpm,firing_cycle,active_slots); 
   
   // average the time stamp from first package and last package
-  double firstTimeStamp = computeTimeStamp(scan, 0);
-  double lastTimeStamp = computeTimeStamp(scan, config_.npackets - 1);
-  double meanTimeStamp = (firstTimeStamp + lastTimeStamp)/2;
+  // double firstTimeStamp = computeTimeStamp(scan, 0);
+  // double lastTimeStamp = computeTimeStamp(scan, config_.npackets - 1);
+  // double meanTimeStamp = (firstTimeStamp + lastTimeStamp)/2;
   // std::cerr << " Velodyne Driver Timestamp first packet= " << firstTimeStamp << std::endl;
   // std::cerr << " Velodyne Driver Timestamp last packet= " << lastTimeStamp << std::endl;
-  time_t seconds;
-  seconds = time (NULL);
-  int gpsSeconds = ((int)(seconds/3600)) * 3600 + floor(meanTimeStamp);
-  int nanSecs =  (meanTimeStamp - floor(meanTimeStamp)) * pow(10,9);
-  scan->header.stamp = ros::Time(gpsSeconds, nanSecs);
+  // time_t seconds;
+  // seconds = time (NULL);
+  // int gpsSeconds = ((int)(seconds/3600)) * 3600 + floor(meanTimeStamp);
+  // int nanSecs =  (meanTimeStamp - floor(meanTimeStamp)) * pow(10,9);
+  // scan->header.stamp = ros::Time(gpsSeconds, nanSecs);
+  scan->header.stamp = ros::Time::now();
   // std::cerr<< scan->header.stamp << std::endl;
   // publish message using time of last packet read
   ROS_DEBUG("Publishing a full Velodyne scan.");
