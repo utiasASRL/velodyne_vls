@@ -59,7 +59,12 @@ private:
   } config_;
 
   boost::shared_ptr<Input> input_;
-  ros::Publisher output_;
+  ros::Publisher output_data_packets_;  /**< data packet message publisher */
+  ros::Publisher output_data_packets_gps_sec_; /**< data packet gps sec publisher */
+  ros::Publisher output_nmea_; /**< publisher of nmea gprmc sentence echoed by Velodyne */
+
+  double gpsTimeSec_; /**< last read time from position packet's NMEA message */
+  bool bPubNMEA_; /**< publish nmea message */
 
   /** diagnostics updater */
   diagnostic_updater::Updater diagnostics_;

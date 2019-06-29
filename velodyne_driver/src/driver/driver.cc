@@ -22,6 +22,9 @@
 #include <tf/transform_listener.h>
 #include <velodyne_msgs/VelodyneScan.h>
 #include <velodyne_driver/rawPosData.h>
+#include <velodyne_driver/time_conv.hpp>
+#include <std_msgs/Float64.h>
+#include <std_msgs/String.h>
 
 #include "driver.h"
 
@@ -333,8 +336,15 @@ VelodyneDriver::VelodyneDriver(ros::NodeHandle node,
     }
 
   // raw packet output topic
-  output_ =
+  output_data_packets_ =
     node.advertise<velodyne_msgs::VelodyneScan>("velodyne_packets", 10);
+
+  output_data_packets_gps_sec_ = 
+    node.advertise<std_msgs::Float64>("velodyne_packet_nmea_time", 10);
+
+  output_nmea_ =
+    node.advertise<std_msgs::String>("velodyne_nmea", 10);
+
   firing_cycle = slot_time * num_slots; // firing cycle time
 }
 
@@ -350,6 +360,10 @@ bool VelodyneDriver::poll(void)
   velodyne_msgs::VelodynePosPacketPtr positionPacket;
   scan->packets.resize(config_.npackets);
 
+  std::stringstream nmea_ss;
+  std_msgs::String nmea_gprmc_ros;
+  bPubNMEA_ = false;
+
   // Since the velodyne delivers data at a very high rate, keep
   // reading and publishing scans as fast as possible.
   for (int i = 0; i < config_.npackets; ++i)
@@ -358,7 +372,38 @@ bool VelodyneDriver::poll(void)
       {
           // keep reading until full packet received
           int rc = input_->getPacket(&scan->packets[i], positionPacket, config_.time_offset);
-          if (rc == 0) break;       // got a full packet?
+          if (rc == 0) {      // got a full packet?
+            if( positionPacket.get() != NULL){ // There is a new position packet was read
+
+              velodyne_rawPosData::RawPosData rawPositionPacketProcessor;
+              double sec_past_hour;     // position packet time (currently not used)
+              std::string nmea_gprmc;   // GPRMC string echoed by the Velodyne
+
+              // We don't use validity of the NMEA message (i.e., return value) because POS 
+              // does not insert the proper checksum.
+              bool validNMEAChecksum = rawPositionPacketProcessor.unpack( positionPacket, sec_past_hour, nmea_gprmc ); 
+
+              if(validNMEAChecksum){
+                
+                conversion::time::UTCDateTime utc(nmea_gprmc);
+                conversion::time::GPSDateTime gpsTime = utc.to_GPS();
+
+                gpsTimeSec_ = gpsTime.getSec();
+              
+              }else{
+
+                std::cout << "\033[33mNMEA invalid checksum\033[0m\n";
+              }
+
+              // prep nmea message for publishing
+              nmea_gprmc_ros.data = nmea_gprmc;
+              bPubNMEA_ = true;
+          
+            }
+            scan->packets[i].stamp = ros::Time(gpsTimeSec_);
+
+            break;
+          }
           if (rc < 0) return false; // end of file reached?
       }
       // Automatic RPM detection logic pushed here.
@@ -414,7 +459,17 @@ bool VelodyneDriver::poll(void)
   // publish message using time of last packet read
   ROS_DEBUG("Publishing a full Velodyne scan.");
   scan->header.frame_id = config_.frame_id;
-  output_.publish(scan);
+  output_data_packets_.publish(scan);
+
+  if(bPubNMEA_){
+    output_nmea_.publish(nmea_gprmc_ros);
+
+    // publish packet GPS time
+    std_msgs::Float64 tsec;
+    tsec.data = gpsTimeSec_;
+    output_data_packets_gps_sec_.publish(tsec);
+  }
+
   // notify diagnostics that a message has been published, updating
   // its status
   diag_topic_->tick(scan->header.stamp);

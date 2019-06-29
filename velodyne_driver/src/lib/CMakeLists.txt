@@ -10,6 +10,12 @@ target_link_libraries(velodyne_rawPosData
   ${libpcap_LIBRARIES}
 )
 
+add_library(applanix_time_conv time_conv.cpp)
+target_link_libraries(applanix_time_conv
+  ${catkin_LIBRARIES}
+  ${libpcap_LIBRARIES}
+)
+
 if(catkin_EXPORTED_TARGETS)
   add_dependencies(velodyne_input ${catkin_EXPORTED_TARGETS})
 endif()

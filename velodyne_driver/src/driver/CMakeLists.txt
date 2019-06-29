@@ -4,6 +4,7 @@ add_dependencies(velodyne_node velodyne_driver_gencfg)
 target_link_libraries(velodyne_node
   velodyne_input
   velodyne_rawPosData
+  applanix_time_conv
   ${catkin_LIBRARIES}
   ${libpcap_LIBRARIES}
 )
@@ -14,6 +15,7 @@ add_dependencies(driver_nodelet velodyne_driver_gencfg)
 target_link_libraries(driver_nodelet
   velodyne_input
   velodyne_rawPosData
+  applanix_time_conv
   ${catkin_LIBRARIES}
   ${libpcap_LIBRARIES}
 )
