@@ -44,7 +44,15 @@ namespace velodyne_rawdata
   //
   ////////////////////////////////////////////////////////////////////////
 
-  RawData::RawData() {}
+  double const SEC_IN_HOUR      = 3600;
+  double const SEC_IN_DAY       = 24 * SEC_IN_HOUR;
+  double const SEC_IN_WEEK      = 7 * SEC_IN_DAY;
+  double const SEC_IN_GPS_CYCLE = 1024 * SEC_IN_WEEK;
+
+  RawData::RawData() {
+    gps_h_past_week_ = 0;
+    prev_packet_time_sec_past_hour_ = -1;
+  }
 
   /** Update parameters: conversions and update */
   void RawData::setParameters(double min_range,
@@ -78,6 +86,7 @@ namespace velodyne_rawdata
   /** Set up for on-line operation. */
   int RawData::setup(ros::NodeHandle private_nh)
   {
+
     // get path to angles.config file for this device
     if (!private_nh.getParam("calibration", config_.calibrationFile))
       {
@@ -628,6 +637,75 @@ namespace velodyne_rawdata
     uint8_t laser_number, firing_order;
     bool dual_return = (pkt.data[1204] == 57);
 
+    // Get NMEA timing info    
+    double gpsTimeSec = pkt.stamp.toSec();
+    int gps_cycle = 0;
+    double gpsTimeSecPastCycle = gpsTimeSec;
+    int gps_week = 0;
+    double gpsTimeSecPastWeek;
+    double gps_hour = 0;
+    double gpsTimeSecPastHour;
+
+    bool b_nmea_time_available = true;
+    if(gpsTimeSec == 0){       // no time sync info      
+      b_nmea_time_available = false;    
+    }else{      
+      gps_cycle = floor(gpsTimeSec / SEC_IN_GPS_CYCLE);
+      gpsTimeSecPastCycle = gpsTimeSec - gps_cycle * SEC_IN_GPS_CYCLE;
+      gps_week = floor(gpsTimeSecPastCycle / SEC_IN_WEEK);
+      gpsTimeSecPastWeek = gpsTimeSecPastCycle - gps_week * SEC_IN_WEEK;
+    }
+    gps_hour = floor(gpsTimeSecPastWeek / SEC_IN_HOUR);
+    gpsTimeSecPastHour = gpsTimeSecPastWeek - gps_hour * SEC_IN_HOUR;
+    // double nmea_gps_sec_past_hour = fmod( gpsTimeSec, SEC_IN_HOUR );    
+
+    // Get packet (Velodyne internal) timing info
+    uint8_t* timestamp_raw = (uint8_t*)&(raw->timestamp);
+    uint* timestamp_packet_microsec = (uint*)timestamp_raw;
+    double packet_time_sec_past_hour = (double)(*timestamp_packet_microsec) / 1000000; 
+
+    // witin a 2 sec of the hour mark, do no update gps hour using nmea message
+    // Instead, rely on the more precise and higher rate timetamps from the Velodyne packets
+    if( b_nmea_time_available ){
+
+      if( gpsTimeSecPastHour > 2.0 && gpsTimeSecPastHour < 3598.0) {        
+        // outside +/- 2 sec of the hour mark
+        if (gps_h_past_week_ != gps_hour ){
+          ROS_INFO("Internal GPS hour past week (%f) updating to NMEA hour past week (%f).",
+                    gps_h_past_week_, gps_hour);
+          ROS_INFO("Packet sec past hour: %f", packet_time_sec_past_hour);
+          ROS_INFO("NMEA sec past hour:     %f", gpsTimeSecPastHour);
+          ROS_INFO("NMEA sec past week:     %f", gpsTimeSecPastWeek);
+        }
+        gps_h_past_week_ = gps_hour;
+        b_internal_gps_h_updated_to_nmea_h_ = true;      
+        
+        }else{        
+          b_internal_gps_h_updated_to_nmea_h_ = false;
+        }
+    }    
+    if(!b_internal_gps_h_updated_to_nmea_h_ && packet_time_sec_past_hour < 10){
+     // std::cout << "*** " << packet_time_sec_past_hour << std::endl;
+     packet_time_sec_past_hour += SEC_IN_HOUR;
+   //}else{
+     //std::cout << nmea_gps_sec_past_hour << " " << packet_time_sec_past_hour << std::endl;
+   }
+   //if( !b_internal=_gps_h_updated_to_nmea_h_ && packet_time_sec_past_hour < 10 ){
+   //    packet_time_sec_past_hour += SEC_IN_HOUR;
+  // }
+   //std::cout << gps_h_past_week_  << " " << std::setprecision(10) << gpsTimeSec << " "
+   //          << packet_time_sec_past_hour << std::endl;    
+   double abs_gps_hour_in_sec = gps_h_past_week_ * SEC_IN_HOUR
+                                + gps_week * SEC_IN_WEEK
+                                + gps_cycle * SEC_IN_GPS_CYCLE;
+
+
+    // uint8_t* timestamp_raw = (uint8_t*)&(raw->timestamp);
+    // uint* timestamp_packet_microsec = (uint*)timestamp_raw;
+    // double packet_time_sec_past_hour = (double)(*timestamp_packet_microsec) / 1000000;
+    // double timeINS = gpsTimeBeforeHourInSec + packet_time_sec_past_hour;
+    double timeINS = packet_time_sec_past_hour + abs_gps_hour_in_sec;
+
     for (int block = 0; block < NUM_BLOCKS_PER_PACKET - (4* dual_return); block++) {
       // cache block for use
       const raw_block_t &current_block = raw->blocks[block];
@@ -686,6 +764,12 @@ namespace velodyne_rawdata
           tmp.bytes[0] = current_block.data[k];
           tmp.bytes[1] = current_block.data[k + 1];
           distance = tmp.uint * VLP32_DISTANCE_RESOLUTION;
+          bool no_return = false;
+          if (distance == 0) {
+            no_return = true;
+            // distance  = 2;
+          }
+          // distance = 3;
 
           if (pointInRange(distance)) {
             laser_number = j + bank_origin;   // Offset the laser in this block by which block it's in
@@ -725,6 +809,12 @@ namespace velodyne_rawdata
 
             // Intensity extraction
             point.intensity = current_block.data[k + 2];
+
+            // time
+            point.timeINS = timeINS;
+
+            if (no_return)
+              point.intensity = 0;
 
             pc.points.push_back(point);
             ++pc.width;
@@ -819,4 +909,5 @@ namespace velodyne_rawdata
       }
     }
   }
+
 } // namespace velodyne_rawdata

@@ -105,7 +105,8 @@ namespace velodyne_rawdata
 
   static const int PACKET_SIZE = 1206; // [bytes]
   static const int NUM_BLOCKS_PER_PACKET = 12;
-  static const int PACKET_STATUS_SIZE = 4;
+  static const int PACKET_TIMESTAMP_SIZE = 4;
+  static const int PACKET_STATUS_SIZE = 2;
   static const int NUM_CHANS_PER_PACKET = (NUM_CHANS_PER_BLOCK * NUM_BLOCKS_PER_PACKET);
 
   /** \brief Raw Velodyne packet.
@@ -123,7 +124,7 @@ namespace velodyne_rawdata
   typedef struct raw_packet
   {
     raw_block_t blocks[NUM_BLOCKS_PER_PACKET];
-    uint16_t revolution;
+    uint8_t timestamp[PACKET_TIMESTAMP_SIZE];
     uint8_t status[PACKET_STATUS_SIZE];
   } raw_packet_t;
 
@@ -167,6 +168,10 @@ namespace velodyne_rawdata
                        double view_width);
 
   private:
+    double gps_h_past_week_;
+    double gps_h_past_week_next_;
+    double prev_packet_time_sec_past_hour_;
+    bool b_internal_gps_h_updated_to_nmea_h_;
 
     /** configuration parameters */
     typedef struct {
