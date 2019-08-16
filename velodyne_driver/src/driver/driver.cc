@@ -389,7 +389,7 @@ bool VelodyneDriver::poll(void)
                 conversion::time::GPSDateTime gpsTime = utc.to_GPS();
 
                 gpsTimeSec_ = gpsTime.getSec();
-                // gpsTimeSec_ -= gpsTime.getUTCTimeOffset();
+                gpsTimeSec_ -= gpsTime.getUTCTimeOffset();
               
               }else{
 

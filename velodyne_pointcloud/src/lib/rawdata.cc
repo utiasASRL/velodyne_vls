@@ -33,6 +33,7 @@
 #include <ros/ros.h>
 #include <ros/package.h>
 #include <angles/angles.h>
+#include <velodyne_pointcloud/time_conv.hpp>
 
 #include <velodyne_pointcloud/rawdata.h>
 
@@ -646,6 +647,10 @@ namespace velodyne_rawdata
     double gps_hour = 0;
     double gpsTimeSecPastHour;
 
+//    // Convert gpsTimeSec from GPS time to UTC time
+//    // TODO no good conversion tool is available, so now just use hard-coded 18.0 seconds.
+//    gpsTimeSec -= 18.0;
+
     bool b_nmea_time_available = true;
     if(gpsTimeSec == 0){       // no time sync info      
       b_nmea_time_available = false;    
@@ -705,6 +710,10 @@ namespace velodyne_rawdata
     // double packet_time_sec_past_hour = (double)(*timestamp_packet_microsec) / 1000000;
     // double timeINS = gpsTimeBeforeHourInSec + packet_time_sec_past_hour;
     double timeINS = packet_time_sec_past_hour + abs_gps_hour_in_sec;
+
+    // Convert gpsTimeSec from UTC time to GPS time
+    // TODO no good conversion tool is available, so now just use hard-coded 18.0 seconds.
+    timeINS += 18.0;
 
     for (int block = 0; block < NUM_BLOCKS_PER_PACKET - (4* dual_return); block++) {
       // cache block for use
