@@ -33,6 +33,8 @@
 #include <velodyne_msgs/VelodyneScan.h>
 #include <velodyne_pointcloud/point_types.h>
 #include <velodyne_pointcloud/calibration.h>
+#include "cv_bridge/cv_bridge.h"
+#include "opencv-3.3.1-dev/opencv/cv.hpp"
 
 namespace velodyne_rawdata
 {
@@ -166,12 +168,20 @@ namespace velodyne_rawdata
 
     void setParameters(double min_range, double max_range, double view_direction,
                        double view_width);
+    cv::Mat getIntensityImg();
+    cv::Mat getDepthImg();
+    cv::Mat getValidImg();
+
+    void resetIntensityImg();
+    void resetDepthImg();
+    void resetValidImg();
 
   private:
     double gps_h_past_week_;
     double gps_h_past_week_next_;
     double prev_packet_time_sec_past_hour_;
     bool b_internal_gps_h_updated_to_nmea_h_;
+    int count = 0;
 
     /** configuration parameters */
     typedef struct {
@@ -195,6 +205,14 @@ namespace velodyne_rawdata
 
     // Caches the azimuth percent offset for the VLS-128 laser firings
     float vls_128_laser_azimuth_cache[16];
+
+    // OpenCV image to log intensity and depth images
+    // assume azimuth resolution 0.2 degree, elevation resolution 0.1 degree
+    double azi_res_rad = 0.2 / 180 * M_PI;
+    double elev_res_rad = 0.2 / 180 * M_PI;
+    cv::Mat intensity_img;
+    cv::Mat depth_img;
+    cv::Mat valid_img;
 
     /** add private function to handle each sensor **/
     void unpack_vlp16(const velodyne_msgs::VelodynePacket &pkt, VPointCloud &pc);

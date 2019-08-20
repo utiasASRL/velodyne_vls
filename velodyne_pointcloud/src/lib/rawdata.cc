@@ -53,6 +53,20 @@ namespace velodyne_rawdata
   RawData::RawData() {
     gps_h_past_week_ = 0;
     prev_packet_time_sec_past_hour_ = -1;
+
+    // Initialize OpenCV images with designated width and height
+    int num_x_pix = (int) ceil(2 * M_PI / azi_res_rad);
+    // TODO Leaving a 0.5 degree buffer on top and bottom
+    int num_y_pix = (int) ceil((40.0 + (0.5 * 2)) / 180 * M_PI / elev_res_rad);
+    ROS_INFO("Initializing CV Windows");
+    intensity_img = cv::Mat(num_y_pix, num_x_pix, CV_8U, 0.0);
+    depth_img = cv::Mat(num_y_pix, num_x_pix, CV_32F, 0.0);
+    valid_img = cv::Mat(num_y_pix, num_x_pix, CV_8U, 0.0);
+
+//    // Initialize OpenCV windows
+//    cv::namedWindow("DEPTH_IMG", 1);
+//    cv::namedWindow("INTENSITY IMG", 1);
+//    cv::namedWindow("VALID_IMG", 1);
   }
 
   /** Update parameters: conversions and update */
@@ -158,6 +172,30 @@ namespace velodyne_rawdata
 
       return 0;
   }
+
+  cv::Mat RawData::getIntensityImg(){
+      return intensity_img;
+  }
+
+    cv::Mat RawData::getDepthImg(){
+    return depth_img;
+    }
+
+    cv::Mat RawData::getValidImg(){
+        return valid_img;
+    }
+
+    void RawData::resetIntensityImg(){
+        intensity_img = cv::Scalar(0);
+    }
+
+    void RawData::resetDepthImg(){
+        depth_img = cv::Scalar(0.0);
+    }
+
+    void RawData::resetValidImg(){
+        valid_img = cv::Scalar(0);
+    }
 
 
   /** @brief convert raw packet to point cloud
@@ -623,6 +661,7 @@ namespace velodyne_rawdata
    *  @param pc shared pointer to point cloud (points are appended)
    */
   void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, VPointCloud &pc) {
+//    int64 t0 = cv::getTickCount();
     float azimuth_diff, azimuth_corrected_f;
     float last_azimuth_diff = 0;
     uint16_t azimuth, azimuth_next, azimuth_corrected;
@@ -714,6 +753,8 @@ namespace velodyne_rawdata
     // Convert gpsTimeSec from UTC time to GPS time
     // TODO no good conversion tool is available, so now just use hard-coded 18.0 seconds.
     timeINS += 18.0;
+
+//    int64 t1 = cv::getTickCount();
 
     for (int block = 0; block < NUM_BLOCKS_PER_PACKET - (4* dual_return); block++) {
       // cache block for use
@@ -827,10 +868,91 @@ namespace velodyne_rawdata
 
             pc.points.push_back(point);
             ++pc.width;
+
+            // Update intensity/depth/valid images
+            int nRows = intensity_img.rows;
+            int nCols = intensity_img.cols;
+
+//            ROS_INFO("nRows: %d", nRows);
+//              ROS_INFO("nCols: %d", nCols);
+
+            // calculate mapping between point clouds 3d position and 2d image
+            int c = int(floor(atan2(point.x, point.y) / azi_res_rad));
+            int r = int(floor(atan2(point.z, sqrt(point.x * point.x + point.y * point.y)) / elev_res_rad));
+
+            // assign pixel values to 2d intensity image
+            // if assigned before, take the max
+            // width / 2 = 900 and 10 + 150 (buffer + 15 elevation) = 160 - 1 is the center
+            int cc = c < nCols / 2 ? nCols / 2 + c : c - nCols / 2;
+            int rc = int((15 + 0.5) / 180 * M_PI / elev_res_rad) - 1 - r;
+
+//            ROS_INFO("value: %d", intensity_img.at<uchar>(rc, cc));
+//            ROS_INFO("point value: %d", int(point.intensity));
+
+//            if (cc < 0 || cc >= nCols){
+//                ROS_INFO("cc error: %d", cc);
+//            }
+//
+//            if (rc < 0 || rc >= nRows){
+//              ROS_INFO("r error: %d", r);
+//              ROS_INFO("rc error: %d", rc);
+//            }
+
+            // Update intensity image
+            if (intensity_img.at<uchar>(rc, cc) == 0){
+                intensity_img.at<uchar>(rc, cc) = int(point.intensity);
+            }
+            else{
+                if (intensity_img.at<uchar>(rc, cc) < int(point.intensity)){
+                    intensity_img.at<uchar>(rc, cc) = int(point.intensity);
+                }
+            }
+
+            // Update depth image
+              if (distance == 0){
+                  depth_img.at<float>(rc, cc) = 0;
+              }
+              else{
+                  depth_img.at<float>(rc, cc) = distance;
+              }
+
+            // Update valid image
+            if (distance == 0){
+                valid_img.at<uchar>(rc, cc) = 0;
+            }
+            else{
+                valid_img.at<uchar>(rc, cc) = 255;
+            }
+//            ROS_INFO("count: %d", count);
+
+////            intensity_img.setTo(cv::Scalar(count));
+////            intensity_img.at<uchar>(30, 20) = count;
+//            if (intensity_img.at<uchar>(rc, cc) == 255){
+//                if (count < 255) {
+//                    count++;
+//                }
+//                else {
+//                    count = 0;
+//                }
+//            }
+//            else{
+//                ROS_INFO("value: %d", intensity_img.at<uchar>(rc, cc));
+//            }
           }
         }
       }
     }
+
+//    int64 t2 = cv::getTickCount();
+//    double interval01 = (t1-t0)/cv::getTickFrequency();
+//    double interval12 = (t2-t1)/cv::getTickFrequency();
+//
+//    ROS_INFO("time intervals 0-1: %f", interval01);
+//    ROS_INFO("time intervals 1-2: %f", interval12);
+
+//      // Show images
+//      cv::imshow("INTENSITY_IMG", intensity_img);
+//      cv::waitKey(0);
   }
 
   /** @brief convert raw HDL-32E channel packet to point cloud

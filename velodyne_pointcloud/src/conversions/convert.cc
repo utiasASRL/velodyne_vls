@@ -24,7 +24,10 @@ namespace velodyne_pointcloud
     data_(new velodyne_rawdata::RawData())
   {
     data_->setup(private_nh);
-
+    image_transport::ImageTransport it(node);
+    intensity_pub = it.advertise("camera/intensity_image", 1000);
+    depth_pub = it.advertise("camera/depth_image", 1000);
+    valid_pub = it.advertise("camera/valid_image", 1000);
 
     // advertise output point cloud (before subscribing to input data)
     output_ =
@@ -55,8 +58,8 @@ namespace velodyne_pointcloud
   /** @brief Callback for raw scan messages. */
   void Convert::processScan(const velodyne_msgs::VelodyneScan::ConstPtr &scanMsg)
   {
-    if (output_.getNumSubscribers() == 0)         // no one listening?
-      return;                                     // avoid much work
+//    if (output_.getNumSubscribers() == 0)         // no one listening?
+//      return;                                     // avoid much work
 
     // allocate a point cloud with same time and frame ID as raw data
     velodyne_rawdata::VPointCloud::Ptr
@@ -69,15 +72,36 @@ namespace velodyne_pointcloud
     outMsg->height = 1;
 
     // process each packet provided by the driver
+//    ROS_INFO("packet size: %d", scanMsg->packets.size());
+    // Reset all images to zeros
+    data_->resetIntensityImg();
+    data_->resetDepthImg();
+    data_->resetValidImg();
+    int64 t0 = cv::getTickCount();
     for (size_t i = 0; i < scanMsg->packets.size(); ++i)
       {
         data_->unpack(scanMsg->packets[i], *outMsg);
       }
+    sensor_msgs::ImagePtr intensityMsg = cv_bridge::CvImage(std_msgs::Header(), "mono8", data_->getIntensityImg()).toImageMsg();
+    intensity_pub.publish(intensityMsg);
+
+    // For depth images, need to convert float to mono8 first
+    cv::Mat dm = data_->getDepthImg();
+    cv::Mat dm_h;
+    dm.convertTo(dm_h, CV_8U);
+    sensor_msgs::ImagePtr depthMsg = cv_bridge::CvImage(std_msgs::Header(), "mono8", dm_h).toImageMsg();
+    depth_pub.publish(depthMsg);
+    sensor_msgs::ImagePtr validMsg = cv_bridge::CvImage(std_msgs::Header(), "mono8", data_->getValidImg()).toImageMsg();
+    valid_pub.publish(validMsg);
 
     // publish the accumulated cloud message
     ROS_DEBUG_STREAM("Publishing " << outMsg->height * outMsg->width
                      << " Velodyne points, time: " << outMsg->header.stamp);
     output_.publish(outMsg);
+
+    int64 t1 = cv::getTickCount();
+    double interval01 = (t1-t0)/cv::getTickFrequency();
+    ROS_INFO("time intervals 0-1: %f", interval01);
   }
 
 } // namespace velodyne_pointcloud

@@ -24,6 +24,10 @@
 
 #include <dynamic_reconfigure/server.h>
 #include <velodyne_pointcloud/CloudNodeConfig.h>
+#include <image_transport/image_transport.h>
+#include <cv_bridge/cv_bridge.h>
+#include <opencv-3.3.1-dev/opencv/highgui.h>
+
 
 namespace velodyne_pointcloud
 {
@@ -47,6 +51,11 @@ namespace velodyne_pointcloud
     boost::shared_ptr<velodyne_rawdata::RawData> data_;
     ros::Subscriber velodyne_scan_;
     ros::Publisher output_;
+
+    // added image publisher
+    image_transport::Publisher intensity_pub;
+    image_transport::Publisher depth_pub;
+    image_transport::Publisher valid_pub;
 
     /// configuration parameters
     typedef struct {
