@@ -877,8 +877,8 @@ namespace velodyne_rawdata
 //              ROS_INFO("nCols: %d", nCols);
 
             // calculate mapping between point clouds 3d position and 2d image
-            int c = int(floor(atan2(point.x, point.y) / azi_res_rad));
-            int r = int(floor(atan2(point.z, sqrt(point.x * point.x + point.y * point.y)) / elev_res_rad));
+            int c = int(floor(atan2(cos_rot_angle, -sin_rot_angle) / azi_res_rad));
+            int r = int(floor(atan2(sin_vert_angle, cos_vert_angle) / elev_res_rad));
 
             // assign pixel values to 2d intensity image
             // if assigned before, take the max
