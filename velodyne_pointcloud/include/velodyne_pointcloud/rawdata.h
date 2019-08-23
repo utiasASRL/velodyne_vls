@@ -176,6 +176,8 @@ namespace velodyne_rawdata
     void resetDepthImg();
     void resetValidImg();
 
+    int getCount();
+
   private:
     double gps_h_past_week_;
     double gps_h_past_week_next_;

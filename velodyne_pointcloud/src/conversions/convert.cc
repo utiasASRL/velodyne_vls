@@ -77,7 +77,7 @@ namespace velodyne_pointcloud
     data_->resetIntensityImg();
     data_->resetDepthImg();
     data_->resetValidImg();
-    int64 t0 = cv::getTickCount();
+//    int64 t0 = cv::getTickCount();
     for (size_t i = 0; i < scanMsg->packets.size(); ++i)
       {
         data_->unpack(scanMsg->packets[i], *outMsg);
@@ -93,15 +93,16 @@ namespace velodyne_pointcloud
     depth_pub.publish(depthMsg);
     sensor_msgs::ImagePtr validMsg = cv_bridge::CvImage(std_msgs::Header(), "mono8", data_->getValidImg()).toImageMsg();
     valid_pub.publish(validMsg);
+    ROS_INFO("count: %d", data_->getCount());
 
     // publish the accumulated cloud message
     ROS_DEBUG_STREAM("Publishing " << outMsg->height * outMsg->width
                      << " Velodyne points, time: " << outMsg->header.stamp);
     output_.publish(outMsg);
 
-    int64 t1 = cv::getTickCount();
-    double interval01 = (t1-t0)/cv::getTickFrequency();
-    ROS_INFO("time intervals 0-1: %f", interval01);
+//    int64 t1 = cv::getTickCount();
+//    double interval01 = (t1-t0)/cv::getTickFrequency();
+//    ROS_INFO("time intervals 0-1: %f", interval01);
   }
 
 } // namespace velodyne_pointcloud
