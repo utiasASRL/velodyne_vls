@@ -56,6 +56,7 @@ namespace velodyne_pointcloud
     image_transport::Publisher intensity_pub;
     image_transport::Publisher depth_pub;
     image_transport::Publisher valid_pub;
+    image_transport::Publisher fire_pub;
 
     /// configuration parameters
     typedef struct {

@@ -63,6 +63,141 @@ namespace velodyne_rawdata
     intensity_img = cv::Mat(num_y_pix, num_x_pix, CV_8U, 0.0);
     depth_img = cv::Mat(num_y_pix, num_x_pix, CV_32F, 0.0);
     valid_img = cv::Mat(num_y_pix, num_x_pix, CV_8U, 0.0);
+    fire_img = cv::Mat(128, 2000, CV_8U, 0.0);
+    fire_id = std::vector<int>(2000, 0);
+
+    // Hard-coded laser map
+    laser_map = std::vector<int>(128, 0);
+    laser_map.at( 127 ) =  36;
+
+    laser_map.at(59) = 0;
+    laser_map.at(74) = 1;
+    laser_map.at(41) = 2;
+    laser_map.at(120) = 3;
+    laser_map.at(31) = 4;
+    laser_map.at(110) = 5;
+    laser_map.at(13) = 6;
+    laser_map.at(92) = 7;
+    laser_map.at(51) = 8;
+    laser_map.at(66) = 9;
+    laser_map.at(33) = 10;
+    laser_map.at(112) = 11;
+    laser_map.at(23) = 12;
+    laser_map.at(102) = 13;
+    laser_map.at(5) = 14;
+    laser_map.at(84) = 15;
+    laser_map.at(107) = 16;
+    laser_map.at(10) = 17;
+    laser_map.at(89) = 18;
+    laser_map.at(56) = 19;
+    laser_map.at(79) = 20;
+    laser_map.at(46) = 21;
+    laser_map.at(125) = 22;
+    laser_map.at(28) = 23;
+    laser_map.at(99) = 24;
+    laser_map.at(2) = 25;
+    laser_map.at(81) = 26;
+    laser_map.at(48) = 27;
+    laser_map.at(71) = 28;
+    laser_map.at(38) = 29;
+    laser_map.at(117) = 30;
+    laser_map.at(20) = 31;
+    laser_map.at(43) = 32;
+    laser_map.at(122) = 33;
+    laser_map.at(25) = 34;
+    laser_map.at(104) = 35;
+    laser_map.at(15) = 36;
+    laser_map.at(94) = 37;
+    laser_map.at(61) = 38;
+    laser_map.at(76) = 39;
+    laser_map.at(35) = 40;
+    laser_map.at(114) = 41;
+    laser_map.at(17) = 42;
+    laser_map.at(96) = 43;
+    laser_map.at(7) = 44;
+    laser_map.at(86) = 45;
+    laser_map.at(53) = 46;
+    laser_map.at(68) = 47;
+    laser_map.at(91) = 48;
+    laser_map.at(58) = 49;
+    laser_map.at(73) = 50;
+    laser_map.at(40) = 51;
+    laser_map.at(127) = 52;
+    laser_map.at(30) = 53;
+    laser_map.at(109) = 54;
+    laser_map.at(12) = 55;
+    laser_map.at(83) = 56;
+    laser_map.at(50) = 57;
+    laser_map.at(65) = 58;
+    laser_map.at(32) = 59;
+    laser_map.at(119) = 60;
+    laser_map.at(22) = 61;
+    laser_map.at(101) = 62;
+    laser_map.at(4) = 63;
+    laser_map.at(27) = 64;
+    laser_map.at(106) = 65;
+    laser_map.at(9) = 66;
+    laser_map.at(88) = 67;
+    laser_map.at(63) = 68;
+    laser_map.at(78) = 69;
+    laser_map.at(45) = 70;
+    laser_map.at(124) = 71;
+    laser_map.at(19) = 72;
+    laser_map.at(98) = 73;
+    laser_map.at(1) = 74;
+    laser_map.at(80) = 75;
+    laser_map.at(55) = 76;
+    laser_map.at(70) = 77;
+    laser_map.at(37) = 78;
+    laser_map.at(116) = 79;
+    laser_map.at(75) = 80;
+    laser_map.at(42) = 81;
+    laser_map.at(121) = 82;
+    laser_map.at(24) = 83;
+    laser_map.at(111) = 84;
+    laser_map.at(14) = 85;
+    laser_map.at(93) = 86;
+    laser_map.at(60) = 87;
+    laser_map.at(67) = 88;
+    laser_map.at(34) = 89;
+    laser_map.at(113) = 90;
+    laser_map.at(16) = 91;
+    laser_map.at(103) = 92;
+    laser_map.at(6) = 93;
+    laser_map.at(85) = 94;
+    laser_map.at(52) = 95;
+    laser_map.at(11) = 96;
+    laser_map.at(90) = 97;
+    laser_map.at(57) = 98;
+    laser_map.at(72) = 99;
+    laser_map.at(47) = 100;
+    laser_map.at(126) = 101;
+    laser_map.at(29) = 102;
+    laser_map.at(108) = 103;
+    laser_map.at(3) = 104;
+    laser_map.at(82) = 105;
+    laser_map.at(49) = 106;
+    laser_map.at(64) = 107;
+    laser_map.at(39) = 108;
+    laser_map.at(118) = 109;
+    laser_map.at(21) = 110;
+    laser_map.at(100) = 111;
+    laser_map.at(123) = 112;
+    laser_map.at(26) = 113;
+    laser_map.at(105) = 114;
+    laser_map.at(8) = 115;
+    laser_map.at(95) = 116;
+    laser_map.at(62) = 117;
+    laser_map.at(77) = 118;
+    laser_map.at(44) = 119;
+    laser_map.at(115) = 120;
+    laser_map.at(18) = 121;
+    laser_map.at(97) = 122;
+    laser_map.at(0) = 123;
+    laser_map.at(87) = 124;
+    laser_map.at(54) = 125;
+    laser_map.at(69) = 126;
+    laser_map.at(36) = 127;
 
 //    // Initialize OpenCV windows
 //    cv::namedWindow("DEPTH_IMG", 1);
@@ -186,6 +321,10 @@ namespace velodyne_rawdata
         return valid_img;
     }
 
+    cv::Mat RawData::getFireImg(){
+        return fire_img;
+    }
+
     void RawData::resetIntensityImg(){
         intensity_img = cv::Scalar(0);
     }
@@ -196,6 +335,14 @@ namespace velodyne_rawdata
 
     void RawData::resetValidImg(){
         valid_img = cv::Scalar(0);
+    }
+
+    void RawData::resetFireImg(){
+        fire_img = cv::Scalar(0);
+    }
+
+    void RawData::resetFireId(){
+        std::fill(fire_id.begin(), fire_id.end(), 0);
     }
 
     int RawData::getCount() {
@@ -874,6 +1021,11 @@ namespace velodyne_rawdata
             pc.points.push_back(point);
             ++pc.width;
 
+            // I am only interested in intensity image so far
+            int element_id = fire_id.at(laser_map.at(laser_number));
+            fire_img.at<uchar>(laser_map.at(laser_number), element_id) = point.intensity;
+            fire_id.at(laser_map.at(laser_number)) = element_id + 1;
+
             // Update intensity/depth/valid images
             int nRows = intensity_img.rows;
             int nCols = intensity_img.cols;
@@ -918,6 +1070,14 @@ namespace velodyne_rawdata
                 }
             }
           }
+          else{
+              // I am only interested in intensity image so far
+              laser_number = j + bank_origin;
+              int element_id = fire_id.at(laser_map.at(laser_number));
+              fire_img.at<uchar>(laser_map.at(laser_number), element_id) = 0;
+              fire_id.at(laser_map.at(laser_number)) = element_id + 1;
+          }
+
         }
       }
     }

@@ -28,6 +28,7 @@ namespace velodyne_pointcloud
     intensity_pub = it.advertise("camera/intensity_image", 1000);
     depth_pub = it.advertise("camera/depth_image", 1000);
     valid_pub = it.advertise("camera/valid_image", 1000);
+    fire_pub = it.advertise("camera/fire_image", 1000);
 
     // advertise output point cloud (before subscribing to input data)
     output_ =
@@ -77,11 +78,15 @@ namespace velodyne_pointcloud
     data_->resetIntensityImg();
     data_->resetDepthImg();
     data_->resetValidImg();
+    data_->resetFireImg();
+    data_->resetFireId();
 //    int64 t0 = cv::getTickCount();
     for (size_t i = 0; i < scanMsg->packets.size(); ++i)
       {
         data_->unpack(scanMsg->packets[i], *outMsg);
       }
+    sensor_msgs::ImagePtr fireMsg = cv_bridge::CvImage(std_msgs::Header(), "mono8", data_->getFireImg()).toImageMsg();
+    fire_pub.publish(fireMsg);
     sensor_msgs::ImagePtr intensityMsg = cv_bridge::CvImage(std_msgs::Header(), "mono8", data_->getIntensityImg()).toImageMsg();
     intensity_pub.publish(intensityMsg);
 
@@ -93,7 +98,6 @@ namespace velodyne_pointcloud
     depth_pub.publish(depthMsg);
     sensor_msgs::ImagePtr validMsg = cv_bridge::CvImage(std_msgs::Header(), "mono8", data_->getValidImg()).toImageMsg();
     valid_pub.publish(validMsg);
-    ROS_INFO("count: %d", data_->getCount());
 
     // publish the accumulated cloud message
     ROS_DEBUG_STREAM("Publishing " << outMsg->height * outMsg->width

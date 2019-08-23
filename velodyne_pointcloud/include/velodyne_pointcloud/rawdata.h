@@ -171,10 +171,13 @@ namespace velodyne_rawdata
     cv::Mat getIntensityImg();
     cv::Mat getDepthImg();
     cv::Mat getValidImg();
+    cv::Mat getFireImg();
 
     void resetIntensityImg();
     void resetDepthImg();
     void resetValidImg();
+    void resetFireImg();
+    void resetFireId();
 
     int getCount();
 
@@ -215,6 +218,10 @@ namespace velodyne_rawdata
     cv::Mat intensity_img;
     cv::Mat depth_img;
     cv::Mat valid_img;
+
+    cv::Mat fire_img; // x-axis timestamp, y-axis laser beam ID number
+    std::vector<int> fire_id; // index of timestamp, i.e x-axis index updated regularly
+    std::vector<int> laser_map;
 
     /** add private function to handle each sensor **/
     void unpack_vlp16(const velodyne_msgs::VelodynePacket &pkt, VPointCloud &pc);
