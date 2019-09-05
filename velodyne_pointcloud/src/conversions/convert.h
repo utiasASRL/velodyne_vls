@@ -18,6 +18,10 @@
 #define _VELODYNE_POINTCLOUD_CONVERT_H_ 1
 
 #include <ros/ros.h>
+#include <iostream>
+#include <fstream>
+#include <iomanip>
+
 
 #include <sensor_msgs/PointCloud2.h>
 #include <velodyne_pointcloud/rawdata.h>
@@ -57,6 +61,12 @@ namespace velodyne_pointcloud
     image_transport::Publisher depth_pub;
     image_transport::Publisher valid_pub;
     image_transport::Publisher fire_pub;
+
+    // add image write indices
+    int depth_id, intensity_id, valid_id;
+
+    // ofstream for csv file object
+    std::ofstream img_timestamp_csv;
 
     /// configuration parameters
     typedef struct {

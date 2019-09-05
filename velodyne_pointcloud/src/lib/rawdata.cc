@@ -65,6 +65,7 @@ namespace velodyne_rawdata
     valid_img = cv::Mat(num_y_pix, num_x_pix, CV_8U, 0.0);
     fire_img = cv::Mat(128, 2000, CV_8U, 0.0);
     fire_id = std::vector<int>(2000, 0);
+    img_timestamp = 0.0;
 
     // Hard-coded laser map
     laser_map = std::vector<int>(128, 0);
@@ -273,6 +274,14 @@ namespace velodyne_rawdata
    return 0;
   }
 
+  double RawData::absGpsTime2Week(double time) {
+      double const SEC_IN_HOUR      = 3600;
+      double const SEC_IN_DAY       = 24 * SEC_IN_HOUR;
+      double const SEC_IN_WEEK      = 7 * SEC_IN_DAY;
+      int gps_week = floor(time / SEC_IN_WEEK);
+      return (time - gps_week * SEC_IN_WEEK);
+  }
+
 
   /** Set up for offline operation */
   int RawData::setupOffline(std::string calibration_file, double max_range_, double min_range_)
@@ -324,6 +333,10 @@ namespace velodyne_rawdata
     cv::Mat RawData::getFireImg(){
         return fire_img;
     }
+
+    double RawData::getImgTime(){
+      return img_timestamp;
+  }
 
     void RawData::resetIntensityImg(){
         intensity_img = cv::Scalar(0);
@@ -838,9 +851,9 @@ namespace velodyne_rawdata
     double gps_hour = 0;
     double gpsTimeSecPastHour;
 
-//    // Convert gpsTimeSec from GPS time to UTC time
-//    // TODO no good conversion tool is available, so now just use hard-coded 18.0 seconds.
-//    gpsTimeSec -= 18.0;
+    // Convert gpsTimeSec from GPS time to UTC time
+    // TODO no good conversion tool is available, so now just use hard-coded 18.0 seconds.
+    gpsTimeSec -= 18.0;
 
     bool b_nmea_time_available = true;
     if(gpsTimeSec == 0){       // no time sync info      
@@ -905,6 +918,9 @@ namespace velodyne_rawdata
     // Convert gpsTimeSec from UTC time to GPS time
     // TODO no good conversion tool is available, so now just use hard-coded 18.0 seconds.
     timeINS += 18.0;
+
+    //Calculate weekTime in advance
+    double weekTime = absGpsTime2Week(timeINS);
 
 //    int64 t1 = cv::getTickCount();
 
@@ -1035,7 +1051,7 @@ namespace velodyne_rawdata
             float elevation_rad = atan2(sin_vert_angle, cos_vert_angle);
 
             // Do not proceed if point falls outside interested region
-            if (azimuth_rad <= M_PI  && azimuth_rad >= 0) {
+            if (azimuth_rad <= M_PI  && azimuth_rad >= -M_PI) {
 //            if (true) {
                 int c = int(floor(azimuth_rad / azi_res_rad));
                 int r = int(floor(elevation_rad / elev_res_rad));
@@ -1068,6 +1084,9 @@ namespace velodyne_rawdata
                 } else {
                     valid_img.at<uchar>(rc, cc) = 255;
                 }
+
+                // Update img_timestamp
+                img_timestamp = weekTime;
             }
           }
           else{
@@ -1076,6 +1095,9 @@ namespace velodyne_rawdata
               int element_id = fire_id.at(laser_map.at(laser_number));
               fire_img.at<uchar>(laser_map.at(laser_number), element_id) = 0;
               fire_id.at(laser_map.at(laser_number)) = element_id + 1;
+
+              // Update img_timestamp
+              img_timestamp = weekTime;
           }
 
         }

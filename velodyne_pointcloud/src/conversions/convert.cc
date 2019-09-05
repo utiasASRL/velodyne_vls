@@ -30,6 +30,18 @@ namespace velodyne_pointcloud
     valid_pub = it.advertise("camera/valid_image", 1000);
     fire_pub = it.advertise("camera/fire_image", 1000);
 
+    // initialize image writer indices
+    intensity_id = 0;
+    depth_id = 0;
+    valid_id = 0;
+
+    // open csv to record timestamp of images
+    img_timestamp_csv.open("/home/haowei/asrl/velodyne_vls/imageSeqTimestamp.csv");
+    if (img_timestamp_csv.is_open()){
+        ROS_INFO("ITS OPEN!");
+    }
+    img_timestamp_csv << "Seq, timestamp\n";
+
     // advertise output point cloud (before subscribing to input data)
     output_ =
       node.advertise<sensor_msgs::PointCloud2>("velodyne_points", 10);
@@ -98,6 +110,23 @@ namespace velodyne_pointcloud
     depth_pub.publish(depthMsg);
     sensor_msgs::ImagePtr validMsg = cv_bridge::CvImage(std_msgs::Header(), "mono8", data_->getValidImg()).toImageMsg();
     valid_pub.publish(validMsg);
+
+    // Write images to disk
+    cv::imwrite("/home/haowei/Documents/data/pose-learning-data/route_B/08-02-2019/intensity/intensity_" + std::to_string(intensity_id) + ".jpg",
+            data_->getIntensityImg());
+    cv::imwrite("/home/haowei/Documents/data/pose-learning-data/route_B/08-02-2019/depth/depth_" + std::to_string(depth_id) + ".jpg",
+            data_->getDepthImg());
+    cv::imwrite("/home/haowei/Documents/data/pose-learning-data/route_B/08-02-2019/valid/valid_" + std::to_string(valid_id) + ".jpg",
+            data_->getValidImg());
+    intensity_id++;
+    depth_id++;
+    valid_id++;
+
+    // Update image timestamp
+      if (img_timestamp_csv.is_open()){
+          img_timestamp_csv << intensity_id << ", " << std::fixed << std::setprecision(17) <<data_->getImgTime() << "\n";
+          img_timestamp_csv.flush();
+      }
 
     // publish the accumulated cloud message
     ROS_DEBUG_STREAM("Publishing " << outMsg->height * outMsg->width

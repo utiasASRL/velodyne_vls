@@ -180,6 +180,9 @@ namespace velodyne_rawdata
     void resetFireId();
 
     int getCount();
+    double getImgTime();
+
+    double absGpsTime2Week(double gpsTime);
 
   private:
     double gps_h_past_week_;
@@ -222,6 +225,7 @@ namespace velodyne_rawdata
     cv::Mat fire_img; // x-axis timestamp, y-axis laser beam ID number
     std::vector<int> fire_id; // index of timestamp, i.e x-axis index updated regularly
     std::vector<int> laser_map;
+    double img_timestamp;
 
     /** add private function to handle each sensor **/
     void unpack_vlp16(const velodyne_msgs::VelodynePacket &pkt, VPointCloud &pc);
