@@ -975,6 +975,9 @@ namespace velodyne_rawdata
         azimuth_diff = (block == NUM_BLOCKS_PER_PACKET - (4*dual_return)-1) ? 0 : last_azimuth_diff;
       }
 
+      double rot_ang_l = 0;
+      double rot_ang_r = 0;
+
       // condition added to avoid calculating points which are not in the interesting defined area (min_angle < area < max_angle)
       if ((config_.min_angle < config_.max_angle && azimuth >= config_.min_angle && azimuth <= config_.max_angle) || (config_.min_angle > config_.max_angle)) {
         for (int j = 0, k = 0; j < NUM_CHANS_PER_BLOCK; j++, k += CHANNEL_SIZE) {
@@ -989,7 +992,8 @@ namespace velodyne_rawdata
           }
           // distance = 3;
 
-          if (pointInRange(distance)) {
+//          if (pointInRange(distance)) {
+        if (true){
             laser_number = j + bank_origin;   // Offset the laser in this block by which block it's in
             firing_order = laser_number / 8;  // VLS-128 fires 8 lasers at a time
 
@@ -1014,90 +1018,102 @@ namespace velodyne_rawdata
               sin_rot_table_[azimuth_corrected] * cos_rot_correction -
               cos_rot_table_[azimuth_corrected] * sin_rot_correction;
 
-            // Compute the distance in the xy plane (w/o accounting for rotation)
-            xy_distance = distance * cos_vert_angle;
+              //
+              if (laser_number == 63){
+                  rot_ang_l = atan2(cos_rot_angle, -sin_rot_angle);
+                  ROS_INFO("angle diff 0: %f", rot_ang_r - rot_ang_l);
+              }
+              else if (laser_number == 39){
+                  rot_ang_r = atan2(cos_rot_angle, -sin_rot_angle);
+                  ROS_INFO("angle diff 1: %f", rot_ang_r - rot_ang_l);
+              }
 
-            /** Use standard ROS coordinate system (right-hand rule) */
-            // append this point to the cloud
-            VPoint point;
-            point.ring = corrections.laser_ring;
-            point.x = xy_distance * cos_rot_angle;    // velodyne y
-            point.y = -(xy_distance * sin_rot_angle); // velodyne x
-            point.z = distance * sin_vert_angle;      // velodyne z
+            if (pointInRange(distance)){
+                // Compute the distance in the xy plane (w/o accounting for rotation)
+                xy_distance = distance * cos_vert_angle;
 
-            // Intensity extraction
-            point.intensity = current_block.data[k + 2];
+                /** Use standard ROS coordinate system (right-hand rule) */
+                // append this point to the cloud
+                VPoint point;
+                point.ring = corrections.laser_ring;
+                point.x = xy_distance * cos_rot_angle;    // velodyne y
+                point.y = -(xy_distance * sin_rot_angle); // velodyne x
+                point.z = distance * sin_vert_angle;      // velodyne z
 
-            // time
-            point.timeINS = timeINS;
+                // Intensity extraction
+                point.intensity = current_block.data[k + 2];
 
-            if (no_return)
-              point.intensity = 0;
+                // time
+                point.timeINS = timeINS;
 
-            pc.points.push_back(point);
-            ++pc.width;
+                if (no_return)
+                  point.intensity = 0;
 
-            // I am only interested in intensity image so far
-            int element_id = fire_id.at(laser_map.at(laser_number));
-            fire_img.at<uchar>(laser_map.at(laser_number), element_id) = point.intensity;
-            fire_id.at(laser_map.at(laser_number)) = element_id + 1;
+                pc.points.push_back(point);
+                ++pc.width;
 
-            // Update intensity/depth/valid images
-            int nRows = intensity_img.rows;
-            int nCols = intensity_img.cols;
+                // I am only interested in intensity image so far
+                int element_id = fire_id.at(laser_map.at(laser_number));
+                fire_img.at<uchar>(laser_map.at(laser_number), element_id) = point.intensity;
+                fire_id.at(laser_map.at(laser_number)) = element_id + 1;
 
-            // calculate mapping between point clouds 3d position and 2d image
-            float azimuth_rad = atan2(cos_rot_angle, -sin_rot_angle);
-            float elevation_rad = atan2(sin_vert_angle, cos_vert_angle);
+                // Update intensity/depth/valid images
+                int nRows = intensity_img.rows;
+                int nCols = intensity_img.cols;
 
-            // Do not proceed if point falls outside interested region
-            if (azimuth_rad <= M_PI  && azimuth_rad >= -M_PI) {
-//            if (true) {
-                int c = int(floor(azimuth_rad / azi_res_rad));
-                int r = int(floor(elevation_rad / elev_res_rad));
+                // calculate mapping between point clouds 3d position and 2d image
+                float azimuth_rad = atan2(cos_rot_angle, -sin_rot_angle);
+                float elevation_rad = atan2(sin_vert_angle, cos_vert_angle);
 
-                // assign pixel values to 2d intensity image
-                // if assigned before, take the max
-                // width / 2 = 900 and 10 + 150 (buffer + 15 elevation) = 160 - 1 is the center
-                int cc = c < nCols / 2 ? nCols / 2 + c : c - nCols / 2;
-                int rc = int((15 + 0.5) / 180 * M_PI / elev_res_rad) - 1 - r;
+                // Do not proceed if point falls outside interested region
+                if (azimuth_rad <= M_PI  && azimuth_rad >= -M_PI) {
+    //            if (true) {
+                    int c = int(floor(azimuth_rad / azi_res_rad));
+                    int r = int(floor(elevation_rad / elev_res_rad));
 
-                // Update intensity image
-                if (intensity_img.at<uchar>(rc, cc) == 0) {
-                    intensity_img.at<uchar>(rc, cc) = int(point.intensity);
-                } else {
-                    if (intensity_img.at<uchar>(rc, cc) < int(point.intensity)) {
+                    // assign pixel values to 2d intensity image
+                    // if assigned before, take the max
+                    // width / 2 = 900 and 10 + 150 (buffer + 15 elevation) = 160 - 1 is the center
+                    int cc = c < nCols / 2 ? nCols / 2 + c : c - nCols / 2;
+                    int rc = int((15 + 0.5) / 180 * M_PI / elev_res_rad) - 1 - r;
+
+                    // Update intensity image
+                    if (intensity_img.at<uchar>(rc, cc) == 0) {
                         intensity_img.at<uchar>(rc, cc) = int(point.intensity);
+                    } else {
+                        if (intensity_img.at<uchar>(rc, cc) < int(point.intensity)) {
+                            intensity_img.at<uchar>(rc, cc) = int(point.intensity);
+                        }
                     }
-                }
 
-                // Update depth image
-                if (distance == 0) {
-                    depth_img.at<float>(rc, cc) = 0;
-                } else {
-                    depth_img.at<float>(rc, cc) = distance;
-                }
+                    // Update depth image
+                    if (distance == 0) {
+                        depth_img.at<float>(rc, cc) = 0;
+                    } else {
+                        depth_img.at<float>(rc, cc) = distance;
+                    }
 
-                // Update valid image
-                if (distance == 0) {
-                    valid_img.at<uchar>(rc, cc) = 0;
-                } else {
-                    valid_img.at<uchar>(rc, cc) = 255;
+                    // Update valid image
+                    if (distance == 0) {
+                        valid_img.at<uchar>(rc, cc) = 0;
+                    } else {
+                        valid_img.at<uchar>(rc, cc) = 255;
+                    }
+
+                    // Update img_timestamp
+                    img_timestamp = weekTime;
                 }
+            }
+            else{
+                // I am only interested in intensity image so far
+                laser_number = j + bank_origin;
+                int element_id = fire_id.at(laser_map.at(laser_number));
+                fire_img.at<uchar>(laser_map.at(laser_number), element_id) = 0;
+                fire_id.at(laser_map.at(laser_number)) = element_id + 1;
 
                 // Update img_timestamp
                 img_timestamp = weekTime;
             }
-          }
-          else{
-              // I am only interested in intensity image so far
-              laser_number = j + bank_origin;
-              int element_id = fire_id.at(laser_map.at(laser_number));
-              fire_img.at<uchar>(laser_map.at(laser_number), element_id) = 0;
-              fire_id.at(laser_map.at(laser_number)) = element_id + 1;
-
-              // Update img_timestamp
-              img_timestamp = weekTime;
           }
 
         }
