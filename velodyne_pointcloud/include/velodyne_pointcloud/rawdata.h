@@ -225,6 +225,7 @@ namespace velodyne_rawdata
     cv::Mat fire_img; // x-axis timestamp, y-axis laser beam ID number
     std::vector<int> fire_id; // index of timestamp, i.e x-axis index updated regularly
     std::vector<int> laser_map;
+    std::vector<uint16_t> laser_azimuth_offset;
     double img_timestamp;
 
     /** add private function to handle each sensor **/

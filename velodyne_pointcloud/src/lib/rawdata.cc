@@ -64,12 +64,21 @@ namespace velodyne_rawdata
     depth_img = cv::Mat(num_y_pix, num_x_pix, CV_32F, 0.0);
     valid_img = cv::Mat(num_y_pix, num_x_pix, CV_8U, 0.0);
     fire_img = cv::Mat(128, 2000, CV_8U, 0.0);
-    fire_id = std::vector<int>(2000, 0);
     img_timestamp = 0.0;
+
+    // hard-coded laser azimuth offset compared to center line defined by first firing group in a firing sequence
+    laser_azimuth_offset = std::vector<uint16_t >(8, 0);
+    laser_azimuth_offset.at(0) = 6.354 - (-6.354);
+    laser_azimuth_offset.at(1) = 6.354 - (-4.548);
+    laser_azimuth_offset.at(2) = 6.354 - (-2.732);
+    laser_azimuth_offset.at(3) = 6.354 - (-0.911);
+    laser_azimuth_offset.at(4) = 6.354 - (0.911);
+    laser_azimuth_offset.at(5) = 6.354 - (2.732);
+    laser_azimuth_offset.at(6) = 6.354 - (4.548);
+    laser_azimuth_offset.at(7) = 6.354 - (6.354);
 
     // Hard-coded laser map
     laser_map = std::vector<int>(128, 0);
-    laser_map.at( 127 ) =  36;
 
     laser_map.at(59) = 0;
     laser_map.at(74) = 1;
@@ -200,10 +209,17 @@ namespace velodyne_rawdata
     laser_map.at(69) = 126;
     laser_map.at(36) = 127;
 
-//    // Initialize OpenCV windows
-//    cv::namedWindow("DEPTH_IMG", 1);
-//    cv::namedWindow("INTENSITY IMG", 1);
-//    cv::namedWindow("VALID_IMG", 1);
+    // use a different fire_id initialization to account in laser azimuth offset
+    fire_id = std::vector<int>(128, 0);
+
+    // compensate for azimuth differences between laser beams
+    // TODO assume data is collected at 10 Hz
+    int j, offset;
+    for (int i = 0; i < fire_id.size(); i++){
+        j = laser_map[i] % 8;
+        offset = int(laser_azimuth_offset[j] / 3600.0 * 1000000 / 53.3 );
+        fire_id.at(i) = offset;
+    }
   }
 
   /** Update parameters: conversions and update */
@@ -355,7 +371,17 @@ namespace velodyne_rawdata
     }
 
     void RawData::resetFireId(){
+        // clear to zeros first
         std::fill(fire_id.begin(), fire_id.end(), 0);
+
+        // compensate for azimuth differences between laser beams
+        // TODO assume data is collected at 10 Hz
+        int j, offset;
+        for (int i = 0; i < fire_id.size(); i++){
+            j = laser_map[i] % 8;
+            offset = int(laser_azimuth_offset[j] / 3600.0 * 1000000 / 53.3 );
+            fire_id.at(i) = offset;
+        }
     }
 
     int RawData::getCount() {
@@ -1018,15 +1044,15 @@ namespace velodyne_rawdata
               sin_rot_table_[azimuth_corrected] * cos_rot_correction -
               cos_rot_table_[azimuth_corrected] * sin_rot_correction;
 
-              //
-              if (laser_number == 63){
-                  rot_ang_l = atan2(cos_rot_angle, -sin_rot_angle);
-                  ROS_INFO("angle diff 0: %f", rot_ang_r - rot_ang_l);
-              }
-              else if (laser_number == 39){
-                  rot_ang_r = atan2(cos_rot_angle, -sin_rot_angle);
-                  ROS_INFO("angle diff 1: %f", rot_ang_r - rot_ang_l);
-              }
+//              //
+//              if (laser_number == 0){
+//                  rot_ang_l = atan2(cos_rot_angle, -sin_rot_angle);
+//                  ROS_INFO("angle diff 0: %f", rot_ang_r - rot_ang_l);
+//              }
+//              else if (laser_number == 7){
+//                  rot_ang_r = atan2(cos_rot_angle, -sin_rot_angle);
+//                  ROS_INFO("angle diff 1: %f", rot_ang_r - rot_ang_l);
+//              }
 
             if (pointInRange(distance)){
                 // Compute the distance in the xy plane (w/o accounting for rotation)
@@ -1055,7 +1081,7 @@ namespace velodyne_rawdata
                 // I am only interested in intensity image so far
                 int element_id = fire_id.at(laser_map.at(laser_number));
                 fire_img.at<uchar>(laser_map.at(laser_number), element_id) = point.intensity;
-                fire_id.at(laser_map.at(laser_number)) = element_id + 1;
+                fire_id.at(laser_map.at(laser_number))++;
 
                 // Update intensity/depth/valid images
                 int nRows = intensity_img.rows;
