@@ -333,6 +333,7 @@ VelodyneDriver::VelodyneDriver(ros::NodeHandle node,
   output_ =
     node.advertise<velodyne_msgs::VelodyneScan>("velodyne_packets", 10);
   firing_cycle = slot_time * num_slots; // firing cycle time
+  last_gps_seconds = 0;
 }
 
 /** poll the device
