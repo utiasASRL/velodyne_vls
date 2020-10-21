@@ -83,6 +83,7 @@ private:
   uint8_t  active_slots;
   double   firing_cycle; 
   std::string dump_file; // string to hold pcap file name
+  uint32_t last_gps_seconds = 0;
 };
 
 } // namespace velodyne_driver

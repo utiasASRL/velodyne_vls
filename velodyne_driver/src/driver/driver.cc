@@ -404,6 +404,10 @@ bool VelodyneDriver::poll(void)
   time_t seconds;
   seconds = time (NULL);
   int gpsSeconds = ((int)(seconds/3600)) * 3600 + floor(meanTimeStamp);
+  if (gpsSeconds < last_gps_seconds) {
+    gpsSeconds += 3600;  // Handles roll-over problems between hours
+  }
+  last_gps_seconds = gpsSeconds;
   int nanSecs =  (meanTimeStamp - floor(meanTimeStamp)) * pow(10,9);
   scan->header.stamp = ros::Time(gpsSeconds, nanSecs);
   // std::cerr<< scan->header.stamp << std::endl;
