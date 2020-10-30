@@ -14,6 +14,7 @@
  */
 
 #include <string>
+#include <sstream>
 #include <cmath>
 #include <time.h>
 #include <stdio.h>
@@ -396,7 +397,7 @@ bool VelodyneDriver::poll(void)
   // calculate npackets for next scan
   auto_npackets =  get_auto_npackets(curr_packet_sensor_model, curr_packet_rmode, auto_rpm,firing_cycle,active_slots); 
   
-  // average the time stamp from first package and last package
+  // average the time stamp from first package and last packet
   double firstTimeStamp = computeTimeStamp(scan, 0);
   double lastTimeStamp = computeTimeStamp(scan, config_.npackets - 1);
   double meanTimeStamp = (firstTimeStamp + lastTimeStamp)/2;
@@ -411,7 +412,8 @@ bool VelodyneDriver::poll(void)
   last_gps_seconds = gpsSeconds;
   int nanSecs =  (meanTimeStamp - floor(meanTimeStamp)) * pow(10,9);
   scan->header.stamp = ros::Time(gpsSeconds, nanSecs);
-  // std::cerr<< scan->header.stamp << std::endl;
+  // scan->header.stamp = ros::Time::now();
+
   // publish message using time of last packet read
   ROS_DEBUG("Publishing a full Velodyne scan.");
   scan->header.frame_id = config_.frame_id;

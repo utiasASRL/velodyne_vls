@@ -59,8 +59,8 @@ namespace velodyne_pointcloud
       return;                                     // avoid much work
 
     // allocate a point cloud with same time and frame ID as raw data
-    velodyne_rawdata::VPointCloud::Ptr
-    outMsg(new velodyne_rawdata::VPointCloud());
+    velodyne_rawdata::TPointCloud::Ptr
+    outMsg(new velodyne_rawdata::TPointCloud());
    //   velodyne_rawdata::XYZIRBPointCloud::Ptr
    //   outMsg(new velodyne_rawdata::XYZIRBPointCloud());
     // outMsg's header is a pcl::PCLHeader, convert it before stamp assignment
@@ -71,7 +71,7 @@ namespace velodyne_pointcloud
     // process each packet provided by the driver
     for (size_t i = 0; i < scanMsg->packets.size(); ++i)
       {
-        data_->unpack(scanMsg->packets[i], *outMsg);
+        data_->unpack_vls128_time(scanMsg->packets[i], *outMsg);
       }
 
     // publish the accumulated cloud message
