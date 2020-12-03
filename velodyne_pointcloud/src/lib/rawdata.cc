@@ -768,6 +768,8 @@ namespace velodyne_rawdata
       double value = convertBinaryToDecimal(digit);
       // compute the seconds from the beginning of that hour to when the data being captured
       double time_stamp = (double)value / 1000000;
+      int leap_seconds = 18;
+      time_stamp += leap_seconds;
       return time_stamp;
   }
 

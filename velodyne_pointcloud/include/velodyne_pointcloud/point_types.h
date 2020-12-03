@@ -37,7 +37,7 @@ namespace velodyne_pointcloud
     PCL_ADD_POINT4D;                    // quad-word XYZ
     float    intensity;                 ///< laser intensity reading
     uint16_t ring;                      ///< laser ring number
-    double time;                      // seconds since the start of the hour (GPS Time)
+    float time;                      // seconds since the start of the hour (GPS Time)
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW     // ensure proper alignment
   } EIGEN_ALIGN16;
 
@@ -57,7 +57,7 @@ POINT_CLOUD_REGISTER_POINT_STRUCT(velodyne_pointcloud::PointXYZIRT,
                                   (float, z, z)
                                   (float, intensity, intensity)
                                   (uint16_t, ring, ring)
-                                  (double, time, time))
+                                  (float, time, time))
 
 #endif // __VELODYNE_POINTCLOUD_POINT_TYPES_H
 

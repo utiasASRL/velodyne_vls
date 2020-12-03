@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(velodyne_driver)
+set(CMAKE_CXX_STANDARD 14)
 
 set(${PROJECT_NAME}_CATKIN_DEPS 
     diagnostic_updater

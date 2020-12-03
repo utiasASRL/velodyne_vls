@@ -16,6 +16,7 @@
 #include <string>
 #include <sstream>
 #include <cmath>
+#include <chrono>
 #include <time.h>
 #include <stdio.h>
 #include <math.h>
@@ -53,16 +54,13 @@ namespace velodyne_driver
   }
 
   inline   double computeTimeStamp(velodyne_msgs::VelodyneScanPtr scan, int index){
-
-      std::string digit4 = toBinary(scan->packets[index].data[1203]);
-      std::string digit3 = toBinary(scan->packets[index].data[1202]);
-      std::string digit2 = toBinary(scan->packets[index].data[1201]);
-      std::string digit1 = toBinary(scan->packets[index].data[1200]);
-      std::string digit = digit4 + digit3 + digit2 + digit1; // string concatenation
-      double value = convertBinaryToDecimal(digit);
-      // compute the seconds from the beginning of that hour to when the data being captured
-      double time_stamp = (double)value / 1000000;
-      return time_stamp;
+      uint32_t gps_microseconds  = scan->packets[index].data[1200];
+      gps_microseconds |= scan->packets[index].data[1201] << 8;
+      gps_microseconds |= scan->packets[index].data[1202] << 16;
+      gps_microseconds |= scan->packets[index].data[1203] << 24;
+      int leap_seconds = 18;
+      double utc_seconds = double(gps_microseconds) / 1.0e6 + leap_seconds;
+      return utc_seconds;
   }
 
 /** Utility function for Velodyne Driver
@@ -403,14 +401,18 @@ bool VelodyneDriver::poll(void)
   double meanTimeStamp = (firstTimeStamp + lastTimeStamp)/2;
   // std::cerr << " Velodyne Driver Timestamp first packet= " << firstTimeStamp << std::endl;
   // std::cerr << " Velodyne Driver Timestamp last packet= " << lastTimeStamp << std::endl;
-  time_t seconds;
-  seconds = time (NULL);
-  int gpsSeconds = ((int)(seconds/3600)) * 3600 + floor(meanTimeStamp);
+  // time_t seconds;
+  // seconds = time (NULL);
+
+  double sysTime = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+
+
+  int gpsSeconds = (int(sysTime / 3600)) * 3600 + floor(meanTimeStamp);
   if (gpsSeconds < last_gps_seconds) {
     gpsSeconds += 3600;  // Handles roll-over problems between hours
   }
   last_gps_seconds = gpsSeconds;
-  int nanSecs =  (meanTimeStamp - floor(meanTimeStamp)) * pow(10,9);
+  int nanSecs =  (meanTimeStamp - floor(meanTimeStamp)) * 1.0e9;
   scan->header.stamp = ros::Time(gpsSeconds, nanSecs);
   // scan->header.stamp = ros::Time::now();
 
